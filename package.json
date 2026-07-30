@@ -1,0 +1,26 @@
+{
+  "name": "bug-snipper",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "backend",
+    "shared-types"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "eslint .",
+    "format": "prettier --write ."
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.18.0",
+    "eslint": "^9.18.0",
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.3",
+    "typescript-eslint": "^8.20.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

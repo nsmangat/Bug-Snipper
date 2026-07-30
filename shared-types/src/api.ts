@@ -1,0 +1,54 @@
+import type {
+  BrowserInfo,
+  Coordinates,
+  DomSnapshot,
+  Report,
+  ReportStatus,
+  Viewport,
+} from './report.js';
+
+/** What the extension POSTs. Excludes id/workspaceId/domain/screenshotPath/status/timestamps since
+those are all derived or assigned server-side, never trusted from the client **/
+export interface SubmitReportRequest {
+  pageUrl: string;
+  screenshotBase64: string;
+  domSnapshot: DomSnapshot;
+  coordinates: Coordinates;
+  viewport: Viewport;
+  browserInfo: BrowserInfo;
+  note?: string | null;
+}
+
+export interface DomainCheckQuery {
+  hostname: string;
+  path: string;
+}
+
+export interface DomainCheckResponse {
+  allowed: boolean;
+  workspaceId?: string;
+  matchedPrefix?: string | null;
+}
+
+export interface ReportListResponse {
+  reports: Report[];
+}
+
+export interface UpdateReportStatusRequest {
+  status: ReportStatus;
+}
+
+export interface CreateOrganizationRequest {
+  name: string;
+}
+
+export interface CreateWorkspaceRequest {
+  organizationId: string;
+  name: string;
+}
+
+export interface CreateDomainRequest {
+  workspaceId: string;
+  hostname: string;
+  pathPrefix?: string | null;
+}
