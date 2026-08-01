@@ -7,4 +7,13 @@ export default tseslint.config(
   {
     ignores: ['**/dist/**', '**/node_modules/**', '**/.wxt/**'],
   },
+  {
+    rules: {
+      // For Express error handeling middleware
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        { argsIgnorePattern: '^_' },
+      ],
+    },
+  },
 );
