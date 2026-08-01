@@ -4,6 +4,9 @@ export interface Organization {
   createdAt: string;
 }
 
+/* Sort of like separate pages under the same organization
+i.e. want a list of bugs/reports for 1 course, which might be 
+different than the bugs/reports for another course all under the same organization */
 export interface Workspace {
   id: string;
   organizationId: string;

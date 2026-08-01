@@ -1,0 +1,19 @@
+{
+  "name": "@bug-snipper/backend",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "seed": "tsx seed/seed.ts"
+  },
+  "dependencies": {
+    "@bug-snipper/shared-types": "*",
+    "@supabase/supabase-js": "^2.47.10",
+    "dotenv": "^16.4.7"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.2",
+    "tsx": "^4.19.2"
+  }
+}
