@@ -1,3 +1,6 @@
+/** This route will be called as like a pre-check to render the capture trigger UI of the extension
+ * if the current domain is in the db
+ */
 import { Router } from 'express';
 import { z } from 'zod';
 import { matchDomain } from '../services/domains.service.js';

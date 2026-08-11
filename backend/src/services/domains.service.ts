@@ -67,5 +67,5 @@ export async function isHostnameAllowlisted(
     .eq('hostname', hostname)
     .limit(1);
   if (error) throw error;
-  return (data ?? []).length > 0;
+  return (data ?? []).length > 0; // greater than 0 means hostname in the DB so will evaluate to true, else false
 }
