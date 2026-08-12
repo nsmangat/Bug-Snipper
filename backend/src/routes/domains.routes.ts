@@ -14,6 +14,7 @@ const checkQuerySchema = z.object({
 export const publicDomainsRouter = Router();
 
 publicDomainsRouter.get('/check', async (req, res, next) => {
+  // Get query parameters i.e. ?hostname=...
   const safe_parsed_req = checkQuerySchema.safeParse(req.query);
 
   // safeParse returns {success: boolean, data: T}
