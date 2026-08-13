@@ -1,0 +1,18 @@
+{
+  "name": "@bug-snipper/extension",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wxt",
+    "build": "wxt build",
+    "typecheck": "wxt prepare && tsc --noEmit"
+  },
+  "dependencies": {
+    "@bug-snipper/shared-types": "*"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3",
+    "wxt": "^0.21.4"
+  }
+}
