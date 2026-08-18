@@ -1,6 +1,13 @@
 import { defineConfig } from 'wxt';
 
 export default defineConfig({
+  // WXT's dev server defaults to the first open port starting at 3000, which collides
+  // with the backend's port, so setting it +1.
+  dev: {
+    server: {
+      port: 3001,
+    },
+  },
   // Manifest is the extension's core properties and permissions,
   // automatically gets generated in the build as manifest.json in .output
   manifest: {
