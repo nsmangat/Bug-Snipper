@@ -1,7 +1,23 @@
 import { browser } from 'wxt/browser';
+import type { DomSnapshot } from '@bug-snipper/shared-types';
 import type { ExtensionMessage } from '../lib/background-content-messages';
 
 const OVERLAY_HOST_ID = 'bug-snipper-overlay-host';
+
+// List of some important computed style properties, not a full dump since there's so many
+// Note: getComputedStyle().getPropertyValue() needs hyphenated CSS property names
+// ('background-color'), unlike element.style's camelCase ('backgroundColor')
+const CAPTURED_STYLE_PROPERTIES = [
+  'color',
+  'background-color',
+  'font-size',
+  'font-family',
+  'font-weight',
+  'border',
+  'padding',
+  'margin',
+  'display',
+] as const; // as const turns it into a readonly tuple, cannot be mutated, just used for safety
 
 export default defineContentScript({
   // Broad match for now, change after domain allowlist gating
@@ -143,6 +159,70 @@ function activateOverlay(): void {
     selectionBox.style.backgroundImage = `url(${croppedDataUrl})`;
     // Scale background image so it coverts the element it's applied to
     selectionBox.style.backgroundSize = 'cover';
+
+    // Capturing the actual DOM/CSS now and console logging for now to test
+    // TODO: Capture at actual submission time, not here at drag-finish time, so this will move elsewhere
+    const targetElement = getElementAtSelectionCenter(selectionRect);
+    if (targetElement) {
+      // Using the root element to extract its styles and all its children to get the DOM/CSS info of the cropped section
+      const domSnapshot = buildDomSnapshot(targetElement);
+      console.log('DOM/CSS snapshot:', domSnapshot);
+    }
+  }
+
+  // Getting the root or topmost element in the screenshot
+  function getElementAtSelectionCenter(rect: DOMRect): Element | null {
+    // Using midpoint to find the topmost element in the cropped coordinates
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+
+    // First need to hide our extension's cropping overlay temporarily to get the true top element of the
+    // site's section the extension cropped
+    // Doing this by temporarily disabling its pointer eventsso elementFromPoint see through to actual site's elements
+    hostElement.style.pointerEvents = 'none';
+    const element = document.elementFromPoint(centerX, centerY);
+    hostElement.style.pointerEvents = '';
+
+    return element;
+  }
+
+  function extractCapturedStyles(element: Element): Record<string, string> {
+    // window.getComputedStyle(whateverElement) gets CSS values applied to an element by the browser
+    const computedStyles = window.getComputedStyle(element);
+    const captured: Record<string, string> = {};
+
+    // Going through these css properties, but only going through the targetted ones in CAPTURED_STYLE_PROPERTIES
+    // getPropertyValue will get that actual value for that property i.e. getPropertyValue(width) gives 50 px
+    // So building the styles for that element passed into this function i.e. root and children if there are any
+    for (const property of CAPTURED_STYLE_PROPERTIES) {
+      captured[property] = computedStyles.getPropertyValue(property);
+    }
+
+    return captured;
+  }
+
+  // Obtaining info for root and all its children if any
+  function buildDomSnapshot(element: Element): DomSnapshot {
+    // Getting the styles for each element in the screenshot
+    // Can initialize with the root/top most element since we already have that
+    // Nested object since it'll be {element-name: {css prop: value}}
+    const styles: Record<string, Record<string, string>> = {
+      root: extractCapturedStyles(element),
+    };
+
+    // Now going through all of the children and doing the same
+    // naming convention will be child-index#-Tag:styles
+    Array.from(element.children).forEach((child, index) => {
+      styles[`child-${index}-${child.tagName.toLowerCase()}`] =
+        extractCapturedStyles(child);
+    });
+
+    // So styles will end up looking like styles: { root:{color:'...', 'background-color:'...'}, child-0-span:{color:'...',...}...}
+
+    return {
+      html: element.outerHTML,
+      styles,
+    };
   }
 
   // Message from content script to background to capture the current viewport or current part of the tab
