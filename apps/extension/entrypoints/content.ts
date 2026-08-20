@@ -120,8 +120,100 @@ function activateOverlay(): void {
   // Letting go of the mouse button i.e. drag is done
   overlay.addEventListener('mouseup', () => {
     isDragging = false;
-    // TODO: logic to capture and crop the rectangle's area
+    void handleSelectionFinished();
   });
+
+  async function handleSelectionFinished(): Promise<void> {
+    // getBoundingClientRect() gets the size of the HTML element
+    // (width, height, top, left, bottom, right, x and y)
+    // same viewport space as clientX/clientY, so no extra conversion needed
+    const selectionRect = selectionBox.getBoundingClientRect();
+
+    // Ignore accidental clicks or short drags rather than trying to capture near 0 sized regions
+    if (selectionRect.width < 4 || selectionRect.height < 4) return;
+
+    const fullScreenshotDataUrl = await requestTabScreenshot();
+    const croppedDataUrl = await cropScreenshot(
+      fullScreenshotDataUrl,
+      selectionRect,
+    );
+
+    // Just showing the cropped result as proof it lines up with the selected region,
+    // TODO: Update to replace this with real DOM snapshot with the submission form
+    selectionBox.style.backgroundImage = `url(${croppedDataUrl})`;
+    // Scale background image so it coverts the element it's applied to
+    selectionBox.style.backgroundSize = 'cover';
+  }
+
+  // Message from content script to background to capture the current viewport or current part of the tab
+  // we're looking at when we drew the rectangle/cropped
+  async function requestTabScreenshot(): Promise<string> {
+    const message: ExtensionMessage = { type: 'CAPTURE_TAB_REQUEST' };
+    const response = await browser.runtime.sendMessage(message);
+
+    return response as string;
+  }
+
+  async function cropScreenshot(
+    fullScreenshotDataUrl: string,
+    cssRect: DOMRect,
+  ): Promise<string> {
+    const image = await loadImage(fullScreenshotDataUrl);
+
+    /** captureVisibleTab returns image sized in physical pixels, but selectionRect is in CSS pixels
+     * On modern screens like retina or 4k monitors, they will be different, so need to scale up the size by
+     * devicePixelRatio to get accurate crop on those devices
+     */
+    const dpr = window.devicePixelRatio;
+
+    // canvas - HTML element that acts like a blank 2D or 3D drawing board on a web page
+    // Used for things like rendering shapes, visualizing data through charts and image manipulation
+    // like cropping and resizing, which is what we'll use it for
+    const canvas = document.createElement('canvas');
+    canvas.width = cssRect.width * dpr;
+    canvas.height = cssRect.height * dpr;
+
+    // To draw on it, get the canvas' context, usually 2D, to get the drawing tools
+    const context = canvas.getContext('2d');
+    if (!context) throw new Error('Could not get 2d canvas context');
+
+    // Drawing the image onto the canvas with selectionBox's dimensions i.e. cropped area
+    context.drawImage(
+      image,
+      cssRect.left * dpr,
+      cssRect.top * dpr,
+      cssRect.width * dpr,
+      cssRect.height * dpr,
+      0,
+      0,
+      cssRect.width * dpr,
+      cssRect.height * dpr,
+    );
+
+    // Pack it back into base64 string
+    return canvas.toDataURL('image/png');
+  }
+
+  // Since we need the image right away after it loads, need to do an await for it so everything in cropScreenshot
+  // pauses until the image is fully obtained (while rest of the program runs as normal)
+  // onload is a traditional event driven callback
+  // If we want it to be modern async/await architecture, wrap it in a promise
+  // Now can wait until the image fully loads i.e. we say don't let await finish yet, pause until
+  // the resolve inside the onload event is called
+  // onload assigned to resolve, onerror assigned to reject and the promise doesn't settle
+  // until one of those callbacks fires
+  function loadImage(src: string): Promise<HTMLImageElement> {
+    return new Promise((resolve, reject) => {
+      // HTML image
+      const image = new Image();
+      // onload for async loading i.e. image loads in background
+      // onload is an event listener so we'll know when the image is fully loaded or failed to load
+      image.onload = () => resolve(image);
+      image.onerror = () =>
+        reject(new Error('Failed to load screenshot image'));
+      image.src = src;
+    });
+  }
 
   // Exiting the cropping mode
   function handleKeydown(event: KeyboardEvent): void {

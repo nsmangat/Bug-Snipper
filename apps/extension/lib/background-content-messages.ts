@@ -7,4 +7,15 @@ export interface ActivateCaptureMessage {
   type: 'ACTIVATE_CAPTURE';
 }
 
-export type ExtensionMessage = ActivateCaptureMessage;
+/** Content script -> background to say that the user finished dragging a selection, now capture
+ * the tab
+ * Background responds with the full-viewport screenshot as a PNG data URL
+ * Cropping to the selected region happens in the content script (it has canvas/DOM access,
+ * the background service worker doesn't).
+ */
+export interface CaptureTabRequestMessage {
+  type: 'CAPTURE_TAB_REQUEST';
+}
+
+export type ExtensionMessage =
+  ActivateCaptureMessage | CaptureTabRequestMessage;
