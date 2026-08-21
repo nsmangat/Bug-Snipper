@@ -1,6 +1,15 @@
 import { browser } from 'wxt/browser';
-import type { DomSnapshot } from '@bug-snipper/shared-types';
-import type { ExtensionMessage } from '../lib/background-content-messages';
+import type {
+  BrowserInfo,
+  Coordinates,
+  DomSnapshot,
+  SubmitReportRequest,
+  Viewport,
+} from '@bug-snipper/shared-types';
+import type {
+  ExtensionMessage,
+  SubmitReportResult,
+} from '../lib/background-content-messages';
 
 const OVERLAY_HOST_ID = 'bug-snipper-overlay-host';
 
@@ -46,6 +55,9 @@ function activateOverlay(): void {
   // fixed position so left and top will work
   // inset is traditional top, right, bottom, left - setting it to 0 + position fixed covers the whole viewport
   // so overlay is covering the whole tab basically
+  //
+  //.report-panel .feature - Descendent selector - applies if second selector is inside i.e. a child or grandchild
+  // of the first selector i.e. tags that are inside a tag that is of report-panel class
   style.textContent = `
     .overlay {
       position: fixed;
@@ -60,6 +72,69 @@ function activateOverlay(): void {
       background: rgba(9, 105, 232, 0.15);
       display: none;
     }
+    .report-panel {
+      position: fixed;
+      bottom: 16px;
+      right: 16px;
+      width: 280px;
+      /* Need z-index, same as .overlay's, without one, this defaults to z-index:
+      auto, which paints BEHIND any element with an explicit z-index regardless of DOM
+      order, so the panel would render invisible underneath the overlay. Equal
+      values fall back to DOM order as the tiebreak, and this is appended after .overlay. */
+      z-index: 2147483647;
+      background: #ffffff;
+      color: #111111;
+      border-radius: 8px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+      padding: 12px;
+      font: 13px system-ui, sans-serif;
+      display: none;
+    }
+    .report-panel .preview {
+      width: 100%;
+      max-height: 120px;
+      object-fit: contain;
+      border: 1px solid #dddddd;
+      border-radius: 4px;
+      margin-bottom: 8px;
+      background: #f5f5f5;
+    }
+    .report-panel textarea {
+      width: 100%;
+      box-sizing: border-box;
+      min-height: 60px;
+      resize: vertical;
+      padding: 6px;
+      border: 1px solid #cccccc;
+      border-radius: 4px;
+      font: inherit;
+      margin-bottom: 8px;
+    }
+    .report-panel .actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+    .report-panel button {
+      padding: 6px 12px;
+      border-radius: 4px;
+      border: none;
+      cursor: pointer;
+      font: inherit;
+    }
+    .report-panel .cancel-btn {
+      background: #eeeeee;
+      color: #333333;
+    }
+    .report-panel .submit-btn {
+      background: #0969e8;
+      color: #ffffff;
+    }
+    .report-panel .status {
+      margin-top: 8px;
+      font-size: 12px;
+      color: #555555;
+    }
   `;
 
   // Creating the overlay div i.e. darkened background when readying to crop
@@ -71,9 +146,46 @@ function activateOverlay(): void {
   selectionBox.className = 'selection-box';
   overlay.appendChild(selectionBox);
 
+  // Report panel (preview + note + submit/cancel)
+  // A sibling of overlay, not child/nested because if it were a child of overlay,
+  // clicking/typing inside the panel would affect overlay's own mousedown/mousemove
+  // listeners and could start an unintended new drag-selection
+  const reportPanel = document.createElement('div');
+  reportPanel.className = 'report-panel';
+
+  const previewImage = document.createElement('img');
+  previewImage.className = 'preview';
+
+  const noteTextarea = document.createElement('textarea');
+  noteTextarea.placeholder = 'Describe the issue (optional)';
+
+  const actionsRow = document.createElement('div');
+  actionsRow.className = 'actions';
+
+  const cancelButton = document.createElement('button');
+  cancelButton.className = 'cancel-btn';
+  cancelButton.textContent = 'Cancel';
+
+  const submitButton = document.createElement('button');
+  submitButton.className = 'submit-btn';
+  submitButton.textContent = 'Submit';
+
+  const statusMessage = document.createElement('div');
+  statusMessage.className = 'status';
+
+  actionsRow.appendChild(cancelButton);
+  actionsRow.appendChild(submitButton);
+  reportPanel.appendChild(previewImage);
+  reportPanel.appendChild(noteTextarea);
+  reportPanel.appendChild(actionsRow);
+  reportPanel.appendChild(statusMessage);
+
   // Adding style as like a global style in the shadow DOM, then adding overlay
   shadowRoot.appendChild(style);
   shadowRoot.appendChild(overlay);
+  // Appended after overlay, has same z-index, so DOM order breaks the tie and this
+  // paints on top
+  shadowRoot.appendChild(reportPanel);
 
   // Finally actually add the outer div that contains the shadow DOM and lives inside actual web page's HTML/CSS
   document.body.appendChild(hostElement);
@@ -93,6 +205,13 @@ function activateOverlay(): void {
   let isDragging = false;
   let startX = 0;
   let startY = 0;
+
+  // Filled in by handleSelectionFinished, read by handleSubmit once the user clicks Submit
+  // Since the two functions run at different times, declare here to persist data between them
+  let pendingScreenshotBase64: string | null = null;
+  let pendingDomSnapshot: DomSnapshot | null = null;
+  let pendingCoordinates: Coordinates | null = null;
+  let pendingViewport: Viewport | null = null;
 
   // Sizing the selection box, initially at size 0 when user clicks, then with drag, mouse coordinates get updated,
   // so currentx and currenty updating, creating the rectangle appearance
@@ -154,19 +273,103 @@ function activateOverlay(): void {
       selectionRect,
     );
 
-    // Just showing the cropped result as proof it lines up with the selected region,
-    // TODO: Update to replace this with real DOM snapshot with the submission form
-    selectionBox.style.backgroundImage = `url(${croppedDataUrl})`;
-    // Scale background image so it coverts the element it's applied to
-    selectionBox.style.backgroundSize = 'cover';
-
-    // Capturing the actual DOM/CSS now and console logging for now to test
-    // TODO: Capture at actual submission time, not here at drag-finish time, so this will move elsewhere
     const targetElement = getElementAtSelectionCenter(selectionRect);
-    if (targetElement) {
-      // Using the root element to extract its styles and all its children to get the DOM/CSS info of the cropped section
-      const domSnapshot = buildDomSnapshot(targetElement);
-      console.log('DOM/CSS snapshot:', domSnapshot);
+    const domSnapshot = targetElement
+      ? buildDomSnapshot(targetElement)
+      : { html: '', styles: {} };
+
+    // Stash everything handleSubmit will need once the user actually clicks Submit
+    // The note text isn't known yet, so the payload can't be fully built yet
+    pendingScreenshotBase64 = croppedDataUrl;
+    pendingDomSnapshot = domSnapshot;
+    pendingCoordinates = {
+      x: selectionRect.left,
+      y: selectionRect.top,
+      width: selectionRect.width,
+      height: selectionRect.height,
+      viewportWidth: window.innerWidth,
+      viewportHeight: window.innerHeight,
+      scrollX: window.scrollX,
+      scrollY: window.scrollY,
+    };
+    pendingViewport = {
+      width: window.innerWidth,
+      height: window.innerHeight,
+      devicePixelRatio: window.devicePixelRatio,
+    };
+
+    showReportPanel(croppedDataUrl);
+  }
+
+  function showReportPanel(croppedDataUrl: string): void {
+    previewImage.src = croppedDataUrl;
+    noteTextarea.value = '';
+    statusMessage.textContent = '';
+    // This is how the report panel 'appears' after cropping is done
+    reportPanel.style.display = 'block';
+    noteTextarea.focus();
+  }
+
+  cancelButton.addEventListener('click', () => {
+    deactivateOverlay();
+  });
+
+  submitButton.addEventListener('click', () => {
+    void handleSubmit();
+  });
+
+  async function handleSubmit(): Promise<void> {
+    // Case for if submit button somehow hit before any selection finished
+    // Shouldn't happen since the panel is hidden until showReportPanel runs
+    if (
+      !pendingScreenshotBase64 ||
+      !pendingDomSnapshot ||
+      !pendingCoordinates ||
+      !pendingViewport
+    ) {
+      return;
+    }
+
+    const browserInfo: BrowserInfo = {
+      userAgent: navigator.userAgent,
+      browserName: 'chrome',
+      browserVersion: 'unknown',
+      os: 'unknown',
+    };
+
+    const payload: SubmitReportRequest = {
+      pageUrl: location.href,
+      screenshotBase64: pendingScreenshotBase64,
+      domSnapshot: pendingDomSnapshot,
+      coordinates: pendingCoordinates,
+      viewport: pendingViewport,
+      browserInfo,
+      note: noteTextarea.value || null,
+    };
+
+    submitButton.disabled = true;
+    cancelButton.disabled = true;
+    statusMessage.textContent = 'Submitting bug report...';
+
+    // satisifes - verifying the object being sent is a valid ExtensionMessage
+    // in this case checking if it matches the SubmitReportMessage variant of the ExtensionMessage union
+    // Want this because want to check to make sure type: Submit_Report is valid, but don't want to change
+    // the object variable type to ExtensionMessage after
+    // Casting as SubmitReportResult in the end since in background.ts have the response shaped like this
+    // Since we control both sides, can say with 100% confidence this is the shape of the request the background worker
+    // will expect to see
+    const result = (await browser.runtime.sendMessage({
+      type: 'SUBMIT_REPORT',
+      payload,
+    } satisfies ExtensionMessage)) as SubmitReportResult;
+
+    if (result.ok) {
+      statusMessage.textContent = 'Report submitted successfully!';
+      setTimeout(() => deactivateOverlay(), 1200);
+    } else {
+      statusMessage.textContent = `Submission failed (${result.status}). Try again?`;
+      submitButton.disabled = false;
+      cancelButton.disabled = false;
     }
   }
 
@@ -178,7 +381,7 @@ function activateOverlay(): void {
 
     // First need to hide our extension's cropping overlay temporarily to get the true top element of the
     // site's section the extension cropped
-    // Doing this by temporarily disabling its pointer eventsso elementFromPoint see through to actual site's elements
+    // Doing this by temporarily disabling its pointer events so elementFromPoint see through to actual site's elements
     hostElement.style.pointerEvents = 'none';
     const element = document.elementFromPoint(centerX, centerY);
     hostElement.style.pointerEvents = '';
