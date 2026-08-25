@@ -12,6 +12,8 @@ import type {
 } from '../lib/background-content-messages';
 
 const OVERLAY_HOST_ID = 'bug-snipper-overlay-host';
+// For domains not allowed, just showing a toast to let the user know the extension can't be used
+const TOAST_HOST_ID = 'bug-snipper-toast-host';
 
 // List of some important computed style properties, not a full dump since there's so many
 // Note: getComputedStyle().getPropertyValue() needs hyphenated CSS property names
@@ -36,9 +38,51 @@ export default defineContentScript({
       if (message.type === 'ACTIVATE_CAPTURE') {
         activateOverlay();
       }
+      if (message.type === 'DOMAIN_NOT_ALLOWED') {
+        showNotAllowedToast();
+      }
     });
   },
 });
+
+// Toast message to notify user the current tab's site is not domain listed, so the extension can't be used here
+function showNotAllowedToast(): void {
+  // Guard against stacking a second toast if the extension is clicked again before
+  // the toast goes away
+  document.getElementById(TOAST_HOST_ID)?.remove();
+
+  const hostElement = document.createElement('div');
+  hostElement.id = TOAST_HOST_ID;
+  const shadowRoot = hostElement.attachShadow({ mode: 'open' });
+
+  const style = document.createElement('style');
+  style.textContent = `
+    .toast {
+      position: fixed;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 2147483647;
+      background: #111111;
+      color: #ffffff;
+      padding: 10px 16px;
+      border-radius: 6px;
+      font: 13px system-ui, sans-serif;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+    }
+  `;
+
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+  toast.textContent =
+    "This site isn't registered for bug reports, so the extension Bug Snipper cannot be used.";
+
+  shadowRoot.appendChild(style);
+  shadowRoot.appendChild(toast);
+  document.body.appendChild(hostElement);
+
+  setTimeout(() => hostElement.remove(), 2500);
+}
 
 // Ability to drag-select rectangle only, no capture/crop/submit yet
 function activateOverlay(): void {

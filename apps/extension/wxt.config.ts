@@ -18,7 +18,8 @@ export default defineConfig({
     // List of APIs or capabilities the extension requires access to
     // i.e. activeTab: act on the current tab only after a direct user gesture (clicking the extension)
     // this is for purpose of getting an ss
-    permissions: ['activeTab'],
+    // Storage for caching
+    permissions: ['activeTab', 'storage'],
     // URLs that the extension can interact with
     // this is what lets the background service worker's fetch() reach the backend
     host_permissions: ['http://localhost:3000/*'],

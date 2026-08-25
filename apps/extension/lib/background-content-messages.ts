@@ -9,6 +9,14 @@ export interface ActivateCaptureMessage {
   type: 'ACTIVATE_CAPTURE';
 }
 
+/** Background -> content to say the clicked tab's hostname+path failed the domain-allowlist check, so
+ * no capture overlay was activated
+ * Content script shows a toast saying the current site isn't registered
+ */
+export interface DomainNotAllowedMessage {
+  type: 'DOMAIN_NOT_ALLOWED';
+}
+
 /** Content script -> background to say that the user finished dragging a selection, now capture
  * the tab
  * Background responds with the full-viewport screenshot as a PNG data URL
@@ -36,4 +44,7 @@ export interface SubmitReportResult {
 }
 
 export type ExtensionMessage =
-  ActivateCaptureMessage | CaptureTabRequestMessage | SubmitReportMessage;
+  | ActivateCaptureMessage
+  | CaptureTabRequestMessage
+  | SubmitReportMessage
+  | DomainNotAllowedMessage;
