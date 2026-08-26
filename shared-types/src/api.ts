@@ -6,6 +6,7 @@ import type {
   ReportStatus,
   Viewport,
 } from './report.js';
+import type { Workspace } from './organization.js';
 
 /** What the extension POSTs. Excludes id/workspaceId/domain/screenshotPath/status/timestamps since
 those are all derived or assigned server-side, never trusted from the client **/
@@ -32,6 +33,10 @@ export interface DomainCheckResponse {
 
 export interface ReportListResponse {
   reports: Report[];
+}
+
+export interface WorkspaceListResponse {
+  workspaces: Workspace[];
 }
 
 export interface UpdateReportStatusRequest {
