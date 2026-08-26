@@ -18,6 +18,17 @@ export class DomainNotAllowedError extends Error {
   }
 }
 
+export class ReportNotFoundError extends Error {
+  constructor() {
+    super('Report not found.');
+    this.name = 'ReportNotFoundError';
+  }
+}
+
+// Signed URL exists for 10 minutes, regenerated fresh every time the detail endpoint is hit, never cached
+// or persisted, so issues like a leaked link should stop working quickly
+const SCREENSHOT_SIGNED_URL_TTL_SECONDS = 600;
+
 interface ReportRow {
   id: string;
   workspace_id: string;
@@ -146,4 +157,33 @@ export async function listReports(
   if (error) throw error;
 
   return (data as ReportRow[]).map(mapReportRow);
+}
+
+export interface ReportDetail {
+  report: Report;
+  screenshotUrl: string;
+}
+
+export async function getReportById(id: string): Promise<ReportDetail> {
+  // maybeSingle (vs single) returns data: null on zero matches instead of throwing,
+  // so should be able to tell between a'not found' report and a real DB error
+  const { data, error } = await supabase
+    .from('reports')
+    .select()
+    .eq('id', id)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) throw new ReportNotFoundError();
+
+  const report = mapReportRow(data as ReportRow);
+
+  // Creating signed URL to access and retrieve from private bucket where report images are held
+  // Destructuring like this means we get the 'data' object from the db call, then save it into the variable after the :
+  const { data: signedUrlData, error: signedUrlError } = await supabase.storage
+    .from(SCREENSHOT_BUCKET)
+    .createSignedUrl(report.screenshotPath, SCREENSHOT_SIGNED_URL_TTL_SECONDS);
+
+  if (signedUrlError) throw signedUrlError;
+
+  return { report, screenshotUrl: signedUrlData.signedUrl };
 }

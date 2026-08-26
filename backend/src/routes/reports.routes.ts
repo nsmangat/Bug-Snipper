@@ -2,7 +2,9 @@ import { Router } from 'express';
 import { z } from 'zod';
 import {
   DomainNotAllowedError,
+  getReportById,
   listReports,
+  ReportNotFoundError,
   submitReport,
 } from '../services/reports.service.js';
 
@@ -96,6 +98,32 @@ reportsRouter.get('/', async (req, res, next) => {
     const reports = await listReports(parsed.data);
     res.json({ reports });
   } catch (err) {
+    next(err);
+  }
+});
+
+const reportIdParamSchema = z.object({
+  id: z.string().uuid(),
+});
+
+reportsRouter.get('/:id', async (req, res, next) => {
+  const parsed = reportIdParamSchema.safeParse(req.params);
+
+  if (!parsed.success) {
+    res
+      .status(400)
+      .json({ error: 'Invalid report id', details: parsed.error.flatten() });
+    return;
+  }
+
+  try {
+    const reportDetail = await getReportById(parsed.data.id);
+    res.json(reportDetail);
+  } catch (err) {
+    if (err instanceof ReportNotFoundError) {
+      res.status(404).json({ error: err.message });
+      return;
+    }
     next(err);
   }
 });
