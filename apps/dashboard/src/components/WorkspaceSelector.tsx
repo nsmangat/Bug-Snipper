@@ -4,8 +4,11 @@ import { getWorkspaces } from '../api/workspaces';
 
 function WorkspaceSelector() {
   const navigate = useNavigate();
-  // Reads the :workspaceId route param this component itself doesn't own — App.tsx defines the
-  // route, this just reads whatever's currently in the URL to know which option to show selected.
+  // Reads the :workspaceId route param from the URL
+  // In the initial '/' route this will be undefined so value='' meaning nothing's been selected yet,
+  // but when selected, calls the onChange, which calls navigate() which basically begins the re-render from BrowserRouter
+  // which re-renders every component below since BrowserRouter wraps everything
+  // This is the re-render which now has url that contains a workplace id so useParams will then have a value
   const { workspaceId } = useParams();
 
   const {

@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { getReports } from '../api/reports';
 
 function ReportList() {
@@ -42,7 +42,11 @@ function ReportList() {
     <ul>
       {reports?.map((report) => (
         <li key={report.id}>
-          [{report.status}] {report.domain} — {report.pageUrl}
+          {/* Initial path is /workspaces/:workspaceId, to get to a report details page, link will be
+           in the form /workspaces/:workspaceId/reports/:id */}
+          <Link to={`reports/${report.id}`}>
+            [{report.status}] {report.domain} — {report.pageUrl}
+          </Link>
         </li>
       ))}
     </ul>

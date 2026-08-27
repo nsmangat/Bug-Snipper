@@ -39,11 +39,12 @@ export interface WorkspaceListResponse {
   workspaces: Workspace[];
 }
 
-/** screenshotUrl is a signed URL which is just the private bucket's internal object key,
- * needed to authenticate a user to get resources from the bucket like the report images
+/** screenshotUrl is a freshly generated, short lived signed URL and the actual browser loadable
+ * link, derived from report.screenshotPath, which is just the private
+ * bucket's internal object key and isn't loadable directly
  * Making this a separate interface from report since only need the signed URL when actually viewing
  * a report's complete details, not when doing stuff like seeing list of reports,
- * so makes more sense to have this separate interface and use it on these report viewings  
+ * so makes more sense to have this separate interface and use it on these report viewings
  **/
 export interface ReportDetailResponse {
   report: Report;

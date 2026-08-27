@@ -1,4 +1,8 @@
-import type { Report, ReportListResponse } from '@bug-snipper/shared-types';
+import type {
+  Report,
+  ReportDetailResponse,
+  ReportListResponse,
+} from '@bug-snipper/shared-types';
 
 const BACKEND_URL = 'http://localhost:3000';
 
@@ -14,4 +18,15 @@ export async function getReports(workspaceId: string): Promise<Report[]> {
 
   const body = (await response.json()) as ReportListResponse;
   return body.reports;
+}
+
+export async function getReportDetail(
+  id: string,
+): Promise<ReportDetailResponse> {
+  const response = await fetch(`${BACKEND_URL}/api/reports/${id}`);
+  if (!response.ok) {
+    throw new Error(`Error getting report: (${response.status})`);
+  }
+
+  return (await response.json()) as ReportDetailResponse;
 }
