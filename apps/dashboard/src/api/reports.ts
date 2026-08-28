@@ -2,14 +2,23 @@ import type {
   Report,
   ReportDetailResponse,
   ReportListResponse,
+  ReportStatus,
 } from '@bug-snipper/shared-types';
 
 const BACKEND_URL = 'http://localhost:3000';
 
-export async function getReports(workspaceId: string): Promise<Report[]> {
+export async function getReports(
+  workspaceId: string,
+  status?: ReportStatus,
+): Promise<Report[]> {
   const url = new URL(`${BACKEND_URL}/api/reports`);
   // Getting/filtering the reports under this specific workspace
   url.searchParams.set('workspaceId', workspaceId);
+
+  // Status filtering
+  if (status) {
+    url.searchParams.set('status', status);
+  }
 
   const response = await fetch(url);
   if (!response.ok) {

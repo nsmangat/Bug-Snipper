@@ -1,9 +1,13 @@
 import { useQuery } from '@tanstack/react-query';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { getReportDetail } from '../api/reports';
 
 function ReportDetailPanel() {
   const { reportId } = useParams();
+  // This route doesn't use ?status= itself, but it's still in the URL, carried over by
+  // ReportList's Link when navigating in, so reading it back out here is what lets "Back to
+  // list" option restore the same filter instead of defaulting back to an unfiltered list
+  const [searchParams] = useSearchParams();
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['report', reportId],
@@ -23,8 +27,11 @@ function ReportDetailPanel() {
       (index route is the default child route that renders inside a parent route's <Outlet/>)
       which is ReportList 
       Not one URL segment, this route is a direct child of /workspaces/:workspaceId, the path of the index route
+      Also added search params here as explained above to maintain the status filter when going back
       */}
-      <Link to="..">Back to list of reports</Link>
+      <Link to={{ pathname: '..', search: searchParams.toString() }}>
+        Back to list of reports
+      </Link>
 
       <h2>Report details</h2>
       <img
