@@ -1,4 +1,4 @@
-import { Outlet } from 'react-router-dom';
+import { Link, Outlet } from 'react-router-dom';
 import WorkspaceSelector from './WorkspaceSelector';
 
 // This wraps every route
@@ -10,6 +10,10 @@ function DashboardLayout() {
   return (
     <div>
       <h1>Reports Dashboard</h1>
+      {/*using <nav> as navigational block since workspace and domain management links will be added */}
+      <nav>
+        <Link to="/organizations">Manage organizations</Link>
+      </nav>
       <WorkspaceSelector />
       <Outlet />
     </div>
