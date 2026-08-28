@@ -39,3 +39,28 @@ export async function getReportDetail(
 
   return (await response.json()) as ReportDetailResponse;
 }
+
+export async function updateReportStatus(
+  id: string,
+  status: ReportStatus,
+): Promise<Report> {
+  const response = await fetch(`${BACKEND_URL}/api/reports/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status }),
+  });
+  if (!response.ok) {
+    throw new Error(`Error updating report status: (${response.status})`);
+  }
+
+  return (await response.json()) as Report;
+}
+
+export async function deleteReport(id: string): Promise<void> {
+  const response = await fetch(`${BACKEND_URL}/api/reports/${id}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) {
+    throw new Error(`Error deleting report: (${response.status})`);
+  }
+}
