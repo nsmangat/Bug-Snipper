@@ -6,7 +6,7 @@ import type {
   ReportStatus,
   Viewport,
 } from './report.js';
-import type { Workspace } from './organization.js';
+import type { Organization, Workspace } from './organization.js';
 
 /** What the extension POSTs. Excludes id/workspaceId/domain/screenshotPath/status/timestamps since
 those are all derived or assigned server-side, never trusted from the client **/
@@ -37,6 +37,10 @@ export interface ReportListResponse {
 
 export interface WorkspaceListResponse {
   workspaces: Workspace[];
+}
+
+export interface OrganizationListResponse {
+  organizations: Organization[];
 }
 
 /** screenshotUrl is a freshly generated, short lived signed URL and the actual browser loadable
