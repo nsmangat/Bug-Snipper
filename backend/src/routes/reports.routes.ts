@@ -1,12 +1,23 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import {
+  deleteReport,
   DomainNotAllowedError,
   getReportById,
   listReports,
   ReportNotFoundError,
   submitReport,
+  updateReportStatus,
 } from '../services/reports.service.js';
+
+// Shared between the list filter and the status update body, keeps the enum's
+// values in sync with ReportStatus in shared-types
+const reportStatusSchema = z.enum([
+  'open',
+  'in_progress',
+  'resolved',
+  'wontfix',
+]);
 
 const coordinatesSchema = z.object({
   x: z.number(),
@@ -80,7 +91,7 @@ publicReportsRouter.post('/', async (req, res, next) => {
 const listReportsQuerySchema = z.object({
   // Query params are strings right now, will need to update if other types like numericals are added i.e. pagination
   workspaceId: z.string().uuid().optional(),
-  status: z.enum(['open', 'in_progress', 'resolved', 'wontfix']).optional(),
+  status: reportStatusSchema.optional(),
 });
 
 export const reportsRouter = Router();
@@ -119,6 +130,66 @@ reportsRouter.get('/:id', async (req, res, next) => {
   try {
     const reportDetail = await getReportById(parsed.data.id);
     res.json(reportDetail);
+  } catch (err) {
+    if (err instanceof ReportNotFoundError) {
+      res.status(404).json({ error: err.message });
+      return;
+    }
+    next(err);
+  }
+});
+
+// Updating and deleting reports
+const updateReportStatusSchema = z.object({
+  status: reportStatusSchema,
+});
+
+reportsRouter.patch('/:id', async (req, res, next) => {
+  const parsedParams = reportIdParamSchema.safeParse(req.params);
+  if (!parsedParams.success) {
+    res.status(400).json({
+      error: 'Invalid report id',
+      details: parsedParams.error.flatten(),
+    });
+    return;
+  }
+
+  const parsedBody = updateReportStatusSchema.safeParse(req.body);
+  if (!parsedBody.success) {
+    res.status(400).json({
+      error: 'Invalid request body',
+      details: parsedBody.error.flatten(),
+    });
+    return;
+  }
+
+  try {
+    const report = await updateReportStatus(
+      parsedParams.data.id,
+      parsedBody.data.status,
+    );
+    res.json(report);
+  } catch (err) {
+    if (err instanceof ReportNotFoundError) {
+      res.status(404).json({ error: err.message });
+      return;
+    }
+    next(err);
+  }
+});
+
+reportsRouter.delete('/:id', async (req, res, next) => {
+  const parsed = reportIdParamSchema.safeParse(req.params);
+  if (!parsed.success) {
+    res
+      .status(400)
+      .json({ error: 'Invalid report id', details: parsed.error.flatten() });
+    return;
+  }
+
+  try {
+    await deleteReport(parsed.data.id);
+    res.status(204).send();
   } catch (err) {
     if (err instanceof ReportNotFoundError) {
       res.status(404).json({ error: err.message });

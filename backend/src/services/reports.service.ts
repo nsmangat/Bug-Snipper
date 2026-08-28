@@ -187,3 +187,51 @@ export async function getReportById(id: string): Promise<ReportDetail> {
 
   return { report, screenshotUrl: signedUrlData.signedUrl };
 }
+
+export async function updateReportStatus(
+  id: string,
+  status: ReportStatus,
+): Promise<Report> {
+  // updated_at isn't set here since the set_updated_at trigger from the migration handles that on
+  // any update automatically
+  const { data, error } = await supabase
+    .from('reports')
+    .update({ status })
+    .eq('id', id)
+    .select()
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) throw new ReportNotFoundError();
+
+  return mapReportRow(data as ReportRow);
+}
+
+export async function deleteReport(id: string): Promise<void> {
+  // .select() on a delete() returns the row(s) that were actually deleted, which is what lets
+  // "zero rows matched" (not found) be distinguished from a real error the same way getReportById
+  // does with maybeSingle.
+  const { data, error } = await supabase
+    .from('reports')
+    .delete()
+    .eq('id', id)
+    .select()
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) throw new ReportNotFoundError();
+
+  const report = mapReportRow(data as ReportRow);
+
+  // Screenshot cleanup: need to delete corresponding image screenshot for deleted report,
+  // so a failure removing the screenshot file itself just means an orphaned object left in storage,
+  // not a failed delete from the caller's perspective, so making a clear error for that
+  const { error: removeError } = await supabase.storage
+    .from(SCREENSHOT_BUCKET)
+    .remove([report.screenshotPath]);
+
+  if (removeError) {
+    console.error(
+      `Failed to remove screenshot for deleted report ${report.id}`,
+      removeError,
+    );
+  }
+}
