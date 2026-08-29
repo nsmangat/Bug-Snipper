@@ -1,4 +1,19 @@
+import type { AllowlistedDomain } from '@bug-snipper/shared-types';
 import { supabase } from '../config/supabase.js';
+
+export class DuplicateDomainError extends Error {
+  constructor() {
+    super('This hostname and path prefix combination is already registered.');
+    this.name = 'DuplicateDomainError';
+  }
+}
+
+export class DomainNotFoundError extends Error {
+  constructor() {
+    super('Domain not found.');
+    this.name = 'DomainNotFoundError';
+  }
+}
 
 // What to return when we find a matching domain
 export interface DomainMatch {
@@ -68,4 +83,70 @@ export async function isHostnameAllowlisted(
     .limit(1);
   if (error) throw error;
   return (data ?? []).length > 0; // greater than 0 means hostname in the DB so will evaluate to true, else false
+}
+
+interface AllowlistedDomainFullRow {
+  id: string;
+  workspace_id: string;
+  hostname: string;
+  path_prefix: string | null;
+  created_at: string;
+}
+
+function mapDomainRow(row: AllowlistedDomainFullRow): AllowlistedDomain {
+  return {
+    id: row.id,
+    workspaceId: row.workspace_id,
+    hostname: row.hostname,
+    pathPrefix: row.path_prefix,
+    createdAt: row.created_at,
+  };
+}
+
+export async function listDomainsForWorkspace(
+  workspaceId: string,
+): Promise<AllowlistedDomain[]> {
+  const { data, error } = await supabase
+    .from('allowlisted_domains')
+    .select()
+    .eq('workspace_id', workspaceId)
+    .order('hostname');
+  if (error) throw error;
+
+  return (data as AllowlistedDomainFullRow[]).map(mapDomainRow);
+}
+
+export async function createDomain(
+  workspaceId: string,
+  hostname: string,
+  pathPrefix: string | null,
+): Promise<AllowlistedDomain> {
+  const { data, error } = await supabase
+    .from('allowlisted_domains')
+    .insert({ workspace_id: workspaceId, hostname, path_prefix: pathPrefix })
+    .select()
+    .single();
+
+  if (error) {
+    // 23505 = Postgres's unique_violation code — this table's unique(hostname, path_prefix)
+    // constraint is the only one that could trigger it here, so it's safe to translate directly
+    // into the specific "you already registered this" error rather than a generic 500.
+    if (error.code === '23505') {
+      throw new DuplicateDomainError();
+    }
+    throw error;
+  }
+
+  return mapDomainRow(data as AllowlistedDomainFullRow);
+}
+
+export async function deleteDomain(id: string): Promise<void> {
+  const { data, error } = await supabase
+    .from('allowlisted_domains')
+    .delete()
+    .eq('id', id)
+    .select()
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) throw new DomainNotFoundError();
 }

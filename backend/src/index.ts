@@ -4,7 +4,7 @@ import { env } from './config/env.js';
 import { dashboardCors, publicCors } from './middleware/cors.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { publicApiRateLimiter } from './middleware/rateLimiter.js';
-import { publicDomainsRouter } from './routes/domains.routes.js';
+import { domainsRouter, publicDomainsRouter } from './routes/domains.routes.js';
 import { organizationsRouter } from './routes/organizations.routes.js';
 import { publicReportsRouter, reportsRouter } from './routes/reports.routes.js';
 import { workspacesRouter } from './routes/workspaces.routes.js';
@@ -33,6 +33,8 @@ app.use('/api/reports', dashboardCors, reportsRouter);
 app.use('/api/workspaces', dashboardCors, workspacesRouter);
 
 app.use('/api/organizations', dashboardCors, organizationsRouter);
+
+app.use('/api/domains', dashboardCors, domainsRouter);
 
 app.use(errorHandler);
 
