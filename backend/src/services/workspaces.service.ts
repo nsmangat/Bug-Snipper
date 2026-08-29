@@ -26,3 +26,17 @@ export async function listWorkspaces(): Promise<Workspace[]> {
 
   return (data as WorkspaceRow[]).map(mapWorkspaceRow);
 }
+
+export async function createWorkspace(
+  organizationId: string,
+  name: string,
+): Promise<Workspace> {
+  const { data, error } = await supabase
+    .from('workspaces')
+    .insert({ organization_id: organizationId, name })
+    .select()
+    .single();
+  if (error) throw error;
+
+  return mapWorkspaceRow(data as WorkspaceRow);
+}

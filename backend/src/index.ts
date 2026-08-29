@@ -30,8 +30,6 @@ app.use(
 
 app.use('/api/reports', dashboardCors, reportsRouter);
 
-// To get all workspaces to then be able to select which workspace to filter reports by which is
-// a query parameter for /api/reports
 app.use('/api/workspaces', dashboardCors, workspacesRouter);
 
 app.use('/api/organizations', dashboardCors, organizationsRouter);
