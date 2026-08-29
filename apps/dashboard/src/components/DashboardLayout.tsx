@@ -13,6 +13,8 @@ function DashboardLayout() {
       {/*using <nav> as navigational block since workspace and domain management links will be added */}
       <nav>
         <Link to="/organizations">Manage organizations</Link>
+        {' | '}
+        <Link to="/workspaces">Manage workspaces</Link>
       </nav>
       <WorkspaceSelector />
       <Outlet />

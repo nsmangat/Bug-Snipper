@@ -3,6 +3,7 @@ import DashboardLayout from './components/DashboardLayout';
 import ReportList from './components/ReportList';
 import ReportDetailPanel from './components/ReportDetailPanel';
 import OrganizationsPage from './components/OrganizationsPage';
+import WorkspacesPage from './components/WorkspacesPage';
 
 function App() {
   return (
@@ -24,6 +25,7 @@ function App() {
           <Route path="reports/:reportId" element={<ReportDetailPanel />} />
         </Route>
         <Route path="/organizations" element={<OrganizationsPage />} />
+        <Route path="/workspaces" element={<WorkspacesPage />} />
       </Route>
     </Routes>
   );
