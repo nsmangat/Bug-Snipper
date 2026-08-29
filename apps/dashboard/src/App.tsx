@@ -4,6 +4,7 @@ import ReportList from './components/ReportList';
 import ReportDetailPanel from './components/ReportDetailPanel';
 import OrganizationsPage from './components/OrganizationsPage';
 import WorkspacesPage from './components/WorkspacesPage';
+import DomainsPage from './components/DomainsPage';
 
 function App() {
   return (
@@ -23,6 +24,7 @@ function App() {
           {/*2 child routes being referred to in above comment*/}
           <Route index element={<ReportList />} />
           <Route path="reports/:reportId" element={<ReportDetailPanel />} />
+          <Route path="domains" element={<DomainsPage />} />
         </Route>
         <Route path="/organizations" element={<OrganizationsPage />} />
         <Route path="/workspaces" element={<WorkspacesPage />} />

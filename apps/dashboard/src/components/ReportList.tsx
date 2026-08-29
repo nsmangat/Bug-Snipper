@@ -59,6 +59,10 @@ function ReportList() {
 
   return (
     <div>
+      <p>
+        <Link to="domains">Manage allowlisted domains for this workspace</Link>
+      </p>
+
       <select
         value={status ?? ''}
         onChange={(event) => {
