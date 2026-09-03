@@ -1,1 +1,6 @@
-@import "tailwindcss";
+@import 'tailwindcss';
+
+/* Dark mode by default, setting it here to prevent a white flash before React mounts  */
+body {
+  background-color: black;
+}
