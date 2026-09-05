@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import toast from 'react-hot-toast';
 import { createOrganization, getOrganizations } from '../api/organizations';
 import Button from './ui/Button';
 import { inputClassName } from './ui/inputStyles';
@@ -22,9 +23,10 @@ function OrganizationsPage() {
 
   const createMutation = useMutation({
     mutationFn: createOrganization,
-    onSuccess: () => {
+    onSuccess: (organization) => {
       void queryClient.invalidateQueries({ queryKey: ['organizations'] });
       setName('');
+      toast.success(`Created organization "${organization.name}"`);
     },
   });
 

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import toast from 'react-hot-toast';
 import { getOrganizations } from '../api/organizations';
 import { createWorkspace, getWorkspaces } from '../api/workspaces';
 import Button from './ui/Button';
@@ -42,9 +43,10 @@ function WorkspacesPage() {
   const createMutation = useMutation({
     mutationFn: (input: { organizationId: string; name: string }) =>
       createWorkspace(input.organizationId, input.name),
-    onSuccess: () => {
+    onSuccess: (workspace) => {
       void queryClient.invalidateQueries({ queryKey: ['workspaces'] });
       setWorkspaceName('');
+      toast.success(`Created workspace "${workspace.name}"`);
     },
   });
 

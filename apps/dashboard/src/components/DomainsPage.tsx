@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { createDomain, deleteDomain, getDomains } from '../api/domains';
 import Button from './ui/Button';
 import { inputClassName } from './ui/inputStyles';
@@ -25,21 +26,30 @@ function DomainsPage() {
   const createMutation = useMutation({
     mutationFn: (input: { hostname: string; pathPrefix: string | null }) =>
       createDomain(workspaceId!, input.hostname, input.pathPrefix),
-    onSuccess: () => {
+    onSuccess: (domain) => {
       void queryClient.invalidateQueries({
         queryKey: ['domains', workspaceId],
       });
       setHostname('');
       setPathPrefix('');
+      toast.success(`Added domain "${domain.hostname}"`);
     },
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => deleteDomain(id),
-    onSuccess: () => {
+    // Before used deleteDomain(id) which resolved to void, but need delete details for toast,
+    // so the mutate() call passes the hostname with the id so that info can be used throughout the mutation,
+    // including onSuccess's second argument
+    mutationFn: (domain: { id: string; hostname: string }) =>
+      deleteDomain(domain.id),
+    // _data is deleteDomain(domain.id)'s return, not used but need to specify since js parameters
+    // are positional i.e. accessing 2nd and beyond variables means _data needs to be specified
+    // Using _ to flag to ESlinter that this variable is purposefully not being used
+    onSuccess: (_data, domain) => {
       void queryClient.invalidateQueries({
         queryKey: ['domains', workspaceId],
       });
+      toast.success(`Removed domain "${domain.hostname}"`);
     },
   });
 
@@ -118,7 +128,12 @@ function DomainsPage() {
               </span>
               <Button
                 variant="danger"
-                onClick={() => deleteMutation.mutate(domain.id)}
+                onClick={() =>
+                  deleteMutation.mutate({
+                    id: domain.id,
+                    hostname: domain.hostname,
+                  })
+                }
                 disabled={deleteMutation.isPending}
               >
                 Remove

@@ -1,6 +1,7 @@
 import type { ReportStatus } from '@bug-snipper/shared-types';
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import toast from 'react-hot-toast';
 import {
   Link,
   useNavigate,
@@ -71,11 +72,12 @@ function ReportDetailPanel() {
   // ?status= filter each one was fetched with, not just the one currently on screen
   const statusMutation = useMutation({
     mutationFn: (status: ReportStatus) => updateReportStatus(reportId!, status),
-    onSuccess: () => {
+    onSuccess: (report) => {
       void queryClient.invalidateQueries({
         queryKey: ['reports', workspaceId],
       });
       void queryClient.invalidateQueries({ queryKey: ['report', reportId] });
+      toast.success(`Status updated to "${report.status}"`);
     },
   });
 
@@ -89,6 +91,7 @@ function ReportDetailPanel() {
       // Doing it here on the onSuccess instead of the .mutate() call since the mutation
       // needs to fully resolve, here it'll be confirmed if the report successfully deleted
       navigate(backToPath);
+      toast.success('Report deleted');
     },
   });
 
