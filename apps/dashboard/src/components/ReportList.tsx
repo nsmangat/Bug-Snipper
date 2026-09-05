@@ -2,6 +2,7 @@ import type { ReportStatus } from '@bug-snipper/shared-types';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { getReports } from '../api/reports';
+import { inputClassName } from './ui/inputStyles';
 
 const STATUS_OPTIONS: ReportStatus[] = [
   'open',
@@ -9,6 +10,14 @@ const STATUS_OPTIONS: ReportStatus[] = [
   'resolved',
   'wontfix',
 ];
+
+// Mapping colour to status badge i.e. green for resolved
+const STATUS_BADGE_CLASSNAMES: Record<ReportStatus, string> = {
+  open: 'bg-blue-900 text-blue-200',
+  in_progress: 'bg-yellow-900 text-yellow-200',
+  resolved: 'bg-green-900 text-green-200',
+  wontfix: 'bg-gray-800 text-gray-400',
+};
 
 function ReportList() {
   const { workspaceId } = useParams();
@@ -54,16 +63,29 @@ function ReportList() {
     enabled: Boolean(workspaceId),
   });
 
-  if (isLoading) return <p>Loading in reports...</p>;
-  if (error) return <p>Failed to load in reports: {error.message}</p>;
+  if (isLoading)
+    return <p className="text-sm text-gray-400">Loading in reports...</p>;
+  if (error) {
+    return (
+      <p className="text-sm text-red-400">
+        Failed to load in reports: {error.message}
+      </p>
+    );
+  }
 
   return (
     <div>
-      <p>
-        <Link to="domains">Manage allowlisted domains for this workspace</Link>
+      <p className="mb-4">
+        <Link
+          to="domains"
+          className="text-sm text-blue-400 hover:text-blue-300"
+        >
+          Manage allowlisted domains for this workspace
+        </Link>
       </p>
 
       <select
+        className={inputClassName}
         value={status ?? ''}
         onChange={(event) => {
           const value = event.target.value;
@@ -73,15 +95,21 @@ function ReportList() {
           setSearchParams(value ? { status: value } : {});
         }}
       >
-        <option value="">All statuses</option>
+        <option value="" className="bg-gray-900 text-gray-100">
+          All statuses
+        </option>
         {STATUS_OPTIONS.map((option) => (
-          <option key={option} value={option}>
+          <option
+            key={option}
+            value={option}
+            className="bg-gray-900 text-gray-100"
+          >
             {option}
           </option>
         ))}
       </select>
 
-      <ul>
+      <ul className="mt-4 divide-y divide-gray-700 rounded-md border border-gray-700">
         {reports?.map((report) => (
           <li key={report.id}>
             {/* Initial path is /workspaces/:workspaceId, to get to a report details page, link will be
@@ -93,8 +121,22 @@ function ReportList() {
                 pathname: `reports/${report.id}`,
                 search: searchParams.toString(),
               }}
+              className="flex items-center gap-3 px-4 py-3 hover:bg-gray-900"
             >
-              [{report.status}] {report.domain} — {report.pageUrl}
+              {/* w-x + text-center to keep column elements line up with each other, else different lengthed statuses 
+              would push the the domain and page url */}
+              <span
+                className={`w-24 shrink-0 rounded-full px-2 py-0.5 text-center text-xs font-medium ${STATUS_BADGE_CLASSNAMES[report.status]}`}
+              >
+                {report.status}
+              </span>
+              <span className="w-40 shrink-0 truncate text-sm text-gray-100">
+                {report.domain}
+              </span>
+              {/* Truncate to cut off anything bigger than w-x above i.e. w-40 with '...' */}
+              <span className="truncate text-sm text-gray-500">
+                {report.pageUrl}
+              </span>
             </Link>
           </li>
         ))}
