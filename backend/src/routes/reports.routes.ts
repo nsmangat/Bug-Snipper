@@ -16,7 +16,7 @@ const reportStatusSchema = z.enum([
   'open',
   'in_progress',
   'resolved',
-  'wontfix',
+  'abandoned',
 ]);
 
 const coordinatesSchema = z.object({

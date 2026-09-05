@@ -8,7 +8,7 @@ const STATUS_OPTIONS: ReportStatus[] = [
   'open',
   'in_progress',
   'resolved',
-  'wontfix',
+  'abandoned',
 ];
 
 // Mapping colour to status badge i.e. green for resolved
@@ -16,7 +16,7 @@ const STATUS_BADGE_CLASSNAMES: Record<ReportStatus, string> = {
   open: 'bg-blue-900 text-blue-200',
   in_progress: 'bg-yellow-900 text-yellow-200',
   resolved: 'bg-green-900 text-green-200',
-  wontfix: 'bg-gray-800 text-gray-400',
+  abandoned: 'bg-gray-800 text-gray-400',
 };
 
 function ReportList() {

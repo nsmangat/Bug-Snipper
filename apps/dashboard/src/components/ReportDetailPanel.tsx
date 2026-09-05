@@ -19,7 +19,7 @@ const STATUS_OPTIONS: ReportStatus[] = [
   'open',
   'in_progress',
   'resolved',
-  'wontfix',
+  'abandoned',
 ];
 
 function ReportDetailPanel() {

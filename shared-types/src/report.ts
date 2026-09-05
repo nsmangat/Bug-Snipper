@@ -1,4 +1,4 @@
-export type ReportStatus = 'open' | 'in_progress' | 'resolved' | 'wontfix';
+export type ReportStatus = 'open' | 'in_progress' | 'resolved' | 'abandoned';
 
 // Screenshot coordinates
 export interface Coordinates {

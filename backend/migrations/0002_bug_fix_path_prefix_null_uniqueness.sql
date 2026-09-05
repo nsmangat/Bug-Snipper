@@ -7,7 +7,7 @@
 -- it lets null participate in the uniqueness check correctly for the case where path_prefix IS NULL where
 -- the table level UNIQUE constraint can't
 -- The existing unique(hostname, path_prefix) constraint from 0001 is untouched and continues to reject duplicate hostname+prefix 
---combos when path_prefix is a real, non-null value.
+-- combos when path_prefix is a real, non-null value.
 
 create unique index allowlisted_domains_hostname_null_prefix_unique
   on allowlisted_domains (hostname)
