@@ -12,6 +12,7 @@ import type {
 } from '../lib/background-content-messages';
 
 const OVERLAY_HOST_ID = 'bug-snipper-overlay-host';
+const INTRO_CARD_HOST_ID = 'bug-snipper-intro-card-host';
 // For domains not allowed, just showing a toast to let the user know the extension can't be used
 const TOAST_HOST_ID = 'bug-snipper-toast-host';
 
@@ -36,7 +37,7 @@ export default defineContentScript({
   main() {
     browser.runtime.onMessage.addListener((message: ExtensionMessage) => {
       if (message.type === 'ACTIVATE_CAPTURE') {
-        activateOverlay();
+        showIntroCard();
       }
       if (message.type === 'DOMAIN_NOT_ALLOWED') {
         showNotAllowedToast();
@@ -69,6 +70,8 @@ function showNotAllowedToast(): void {
       border-radius: 6px;
       font: 13px system-ui, sans-serif;
       box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+      max-width: 320px;
+      text-align: center;
     }
   `;
 
@@ -82,6 +85,119 @@ function showNotAllowedToast(): void {
   document.body.appendChild(hostElement);
 
   setTimeout(() => hostElement.remove(), 2500);
+}
+
+// Shown first everytime the extension is clicked
+// Card gives a brief description on what to do followed by providing a button to start screenshotting
+function showIntroCard(): void {
+  // Don't show the intro card again if it's already up, or if the user already clicked through
+  // to the capture mode
+  if (document.getElementById(INTRO_CARD_HOST_ID)) return;
+  if (document.getElementById(OVERLAY_HOST_ID)) return;
+
+  const hostElement = document.createElement('div');
+  hostElement.id = INTRO_CARD_HOST_ID;
+  const shadowRoot = hostElement.attachShadow({ mode: 'open' });
+
+  const style = document.createElement('style');
+  style.textContent = `
+    .card {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      width: 325px;
+      z-index: 2147483647;
+      background: #111827;
+      color: #ffffff;
+      border-radius: 12px;
+      padding: 16px;
+      font: 13px system-ui, sans-serif;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    }
+    .card h2 {
+      margin: 0 0 8px;
+      padding-right: 20px;
+      font-size: 15px;
+      font-weight: 600;
+    }
+    .card p {
+      margin: 0 0 14px;
+      color: #9ca3af;
+      line-height: 1.4;
+    }
+    .card .start-btn {
+      width: 100%;
+      padding: 10px;
+      border: none;
+      border-radius: 8px;
+      background: #10b981;
+      color: #ffffff;
+      font: inherit;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .card .close-btn {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      width: 20px;
+      height: 20px;
+      padding: 0;
+      border: none;
+      background: transparent;
+      color: #9ca3af;
+      font-size: 16px;
+      line-height: 1;
+      cursor: pointer;
+    }
+    .card .close-btn:hover {
+      color: #ffffff;
+    }
+  `;
+
+  const card = document.createElement('div');
+  card.className = 'card';
+
+  const heading = document.createElement('h2');
+  heading.textContent = 'BugSnipper - Capture Bugs with Screenshots';
+
+  const description = document.createElement('p');
+  description.textContent = `Crop the region containing the bug, (optionally) add a description, and submit!`;
+
+  const startButton = document.createElement('button');
+  startButton.className = 'start-btn';
+  startButton.textContent = 'Start Capture';
+  startButton.addEventListener('click', () => {
+    dismissCard();
+    activateOverlay();
+  });
+
+  const closeButton = document.createElement('button');
+  closeButton.className = 'close-btn';
+  closeButton.textContent = '×';
+  closeButton.setAttribute('aria-label', 'Dismiss');
+  closeButton.addEventListener('click', () => dismissCard());
+
+  card.appendChild(closeButton);
+  card.appendChild(heading);
+  card.appendChild(description);
+  card.appendChild(startButton);
+
+  shadowRoot.appendChild(style);
+  shadowRoot.appendChild(card);
+  document.body.appendChild(hostElement);
+
+  // Shared by the close button, escape key and start buttons
+  function dismissCard(): void {
+    hostElement.remove();
+    document.removeEventListener('keydown', handleCardKeydown);
+  }
+
+  // Escape dismissal
+  function handleCardKeydown(event: KeyboardEvent): void {
+    if (event.key === 'Escape') dismissCard();
+  }
+  document.addEventListener('keydown', handleCardKeydown);
 }
 
 // Ability to drag-select rectangle only, no capture/crop/submit yet
