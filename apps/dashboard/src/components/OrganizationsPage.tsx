@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createOrganization, getOrganizations } from '../api/organizations';
+import Button from './ui/Button';
+import { inputClassName } from './ui/inputStyles';
 
 function OrganizationsPage() {
   const queryClient = useQueryClient();
@@ -28,7 +30,7 @@ function OrganizationsPage() {
 
   return (
     <div>
-      <h2>Organizations</h2>
+      <h2 className="mb-4 text-xl font-semibold text-white">Organizations</h2>
 
       <form
         onSubmit={(event) => {
@@ -41,27 +43,42 @@ function OrganizationsPage() {
             createMutation.mutate(trimmedName);
           }
         }}
+        className="flex gap-2"
       >
         <input
+          className={inputClassName}
           value={name}
           onChange={(event) => setName(event.target.value)}
           placeholder="Organization name"
           disabled={createMutation.isPending}
         />
-        <button type="submit" disabled={createMutation.isPending}>
+        <Button type="submit" disabled={createMutation.isPending}>
           Create
-        </button>
+        </Button>
       </form>
       {createMutation.isError && (
-        <p>Failed to create organization: {createMutation.error.message}</p>
+        <p className="mt-2 text-sm text-red-400">
+          Failed to create organization: {createMutation.error.message}
+        </p>
       )}
 
-      {isLoading && <p>Loading organizations...</p>}
-      {error && <p>Failed to load organizations: {error.message}</p>}
+      {isLoading && (
+        <p className="mt-4 text-sm text-gray-400">Loading organizations...</p>
+      )}
+      {error && (
+        <p className="mt-4 text-sm text-red-400">
+          Failed to load organizations: {error.message}
+        </p>
+      )}
       {organizations && (
-        <ul>
+        <ul className="mt-4 divide-y divide-gray-700 rounded-md border border-gray-700">
           {organizations.map((organization) => (
-            <li key={organization.id}>{organization.name}</li>
+            <li
+              key={organization.id}
+              className="px-4 py-3 text-sm text-gray-100"
+            >
+              {organization.name}
+            </li>
           ))}
         </ul>
       )}

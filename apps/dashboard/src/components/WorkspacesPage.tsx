@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getOrganizations } from '../api/organizations';
 import { createWorkspace, getWorkspaces } from '../api/workspaces';
+import Button from './ui/Button';
+import { inputClassName } from './ui/inputStyles';
 
 function WorkspacesPage() {
   const queryClient = useQueryClient();
@@ -46,14 +48,20 @@ function WorkspacesPage() {
     },
   });
 
-  if (organizationsLoading) return <p>Loading organizations...</p>;
+  if (organizationsLoading) {
+    return <p className="text-sm text-gray-400">Loading organizations...</p>;
+  }
   if (organizationsError) {
-    return <p>Failed to load organizations: {organizationsError.message}</p>;
+    return (
+      <p className="text-sm text-red-400">
+        Failed to load organizations: {organizationsError.message}
+      </p>
+    );
   }
 
   return (
     <div>
-      <h2>Workspaces</h2>
+      <h2 className="mb-4 text-xl font-semibold text-white">Workspaces</h2>
 
       <form
         onSubmit={(event) => {
@@ -63,50 +71,66 @@ function WorkspacesPage() {
             createMutation.mutate({ organizationId, name: trimmed });
           }
         }}
+        className="flex gap-2"
       >
         <select
+          className={inputClassName}
           value={organizationId}
           onChange={(event) => setOrganizationId(event.target.value)}
           disabled={createMutation.isPending}
         >
-          <option value="" disabled>
+          <option value="" disabled className="bg-gray-900 text-gray-100">
             Select an organization
           </option>
           {organizations?.map((organization) => (
-            <option key={organization.id} value={organization.id}>
+            <option
+              key={organization.id}
+              value={organization.id}
+              className="bg-gray-900 text-gray-100"
+            >
               {organization.name}
             </option>
           ))}
         </select>
         <input
+          className={inputClassName}
           value={workspaceName}
           onChange={(event) => setWorkspaceName(event.target.value)}
           placeholder="Workspace name"
           disabled={createMutation.isPending}
         />
-        <button
+        <Button
           type="submit"
           disabled={createMutation.isPending || !organizationId}
         >
           Create
-        </button>
+        </Button>
       </form>
       {createMutation.isError && (
-        <p>Failed to create workspace: {createMutation.error.message}</p>
+        <p className="mt-2 text-sm text-red-400">
+          Failed to create workspace: {createMutation.error.message}
+        </p>
       )}
 
-      {workspacesLoading && <p>Loading workspaces...</p>}
+      {workspacesLoading && (
+        <p className="mt-4 text-sm text-gray-400">Loading workspaces...</p>
+      )}
       {workspacesError && (
-        <p>Failed to load workspaces: {workspacesError.message}</p>
+        <p className="mt-4 text-sm text-red-400">
+          Failed to load workspaces: {workspacesError.message}
+        </p>
       )}
       {workspaces && (
-        <ul>
+        <ul className="mt-4 divide-y divide-gray-700 rounded-md border border-gray-700">
           {workspaces.map((workspace) => (
-            <li key={workspace.id}>
-              {workspace.name} (
-              {organizationNamesById.get(workspace.organizationId) ??
-                'unknown organization'}
-              )
+            <li key={workspace.id} className="px-4 py-3 text-sm text-gray-100">
+              {workspace.name}{' '}
+              <span className="text-gray-500">
+                (
+                {organizationNamesById.get(workspace.organizationId) ??
+                  'unknown organization'}
+                )
+              </span>
             </li>
           ))}
         </ul>

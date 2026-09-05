@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router-dom';
 import { createDomain, deleteDomain, getDomains } from '../api/domains';
+import Button from './ui/Button';
+import { inputClassName } from './ui/inputStyles';
 
 function DomainsPage() {
   const { workspaceId } = useParams();
@@ -43,10 +45,14 @@ function DomainsPage() {
 
   return (
     <div>
-      <p>
-        <Link to="..">Back to list of reports</Link>
+      <p className="mb-4">
+        <Link to=".." className="text-sm text-blue-400 hover:text-blue-300">
+          Back to list of reports
+        </Link>
       </p>
-      <h2>Allowlisted domains</h2>
+      <h2 className="mb-4 text-xl font-semibold text-white">
+        Allowlisted domains
+      </h2>
 
       <form
         onSubmit={(event) => {
@@ -59,43 +65,64 @@ function DomainsPage() {
             });
           }
         }}
+        className="flex gap-2"
       >
         <input
+          className={inputClassName}
           value={hostname}
           onChange={(event) => setHostname(event.target.value)}
           placeholder="Hostname (ex. CollegeName.edu)"
           disabled={createMutation.isPending}
         />
         <input
+          className={inputClassName}
           value={pathPrefix}
           onChange={(event) => setPathPrefix(event.target.value)}
           placeholder="Path prefix (optional, ex. /courses/101)"
           disabled={createMutation.isPending}
         />
-        <button type="submit" disabled={createMutation.isPending}>
+        <Button type="submit" disabled={createMutation.isPending}>
           Add domain
-        </button>
+        </Button>
       </form>
       {/* This mutation's error message comes straight from the backend's response body (see
           api/domains.ts) instead of generic 400 since the duplicate hostname case needs to
           say why it failed, since "request failed" error wouldn't explain that this
           exact hostname+prefix is already registered */}
-      {createMutation.isError && <p>{createMutation.error.message}</p>}
+      {createMutation.isError && (
+        <p className="mt-2 text-sm text-red-400">
+          {createMutation.error.message}
+        </p>
+      )}
 
-      {isLoading && <p>Loading domains...</p>}
-      {error && <p>Failed to load domains: {error.message}</p>}
+      {isLoading && (
+        <p className="mt-4 text-sm text-gray-400">Loading domains...</p>
+      )}
+      {error && (
+        <p className="mt-4 text-sm text-red-400">
+          Failed to load domains: {error.message}
+        </p>
+      )}
       {domains && (
-        <ul>
+        <ul className="mt-4 divide-y divide-gray-700 rounded-md border border-gray-700">
           {domains.map((domain) => (
-            <li key={domain.id}>
-              {domain.hostname}
-              {domain.pathPrefix ? domain.pathPrefix : ' (no path prefix)'}{' '}
-              <button
+            <li
+              key={domain.id}
+              className="flex items-center justify-between px-4 py-3 text-sm text-gray-100"
+            >
+              <span>
+                {domain.hostname}
+                <span className="text-gray-500">
+                  {domain.pathPrefix ? domain.pathPrefix : ' (no path prefix)'}
+                </span>
+              </span>
+              <Button
+                variant="danger"
                 onClick={() => deleteMutation.mutate(domain.id)}
                 disabled={deleteMutation.isPending}
               >
                 Remove
-              </button>
+              </Button>
             </li>
           ))}
         </ul>
