@@ -1,4 +1,5 @@
 import { browser } from 'wxt/browser';
+import { REPORT_NOTE_MAX_LENGTH } from '@bug-snipper/shared-types';
 import type {
   BrowserInfo,
   Coordinates,
@@ -162,7 +163,7 @@ function showIntroCard(): void {
   heading.textContent = 'BugSnipper - Capture Bugs with Screenshots';
 
   const description = document.createElement('p');
-  description.textContent = `Crop the region containing the bug, (optionally) add a description, and submit!`;
+  description.textContent = `Crop the region containing the bug, add a description, and submit!`;
 
   const startButton = document.createElement('button');
   startButton.className = 'start-btn';
@@ -317,7 +318,9 @@ function activateOverlay(): void {
   previewImage.className = 'preview';
 
   const noteTextarea = document.createElement('textarea');
-  noteTextarea.placeholder = 'Describe the issue (optional)';
+  noteTextarea.placeholder = 'Describe the issue (required)';
+  // Native browser enforcement to stop the user from typing past this length in the input box
+  noteTextarea.maxLength = REPORT_NOTE_MAX_LENGTH;
 
   const actionsRow = document.createElement('div');
   actionsRow.className = 'actions';
@@ -490,6 +493,14 @@ function activateOverlay(): void {
       return;
     }
 
+    // Still have backend checks, but this helps to prevent unnecessary round trips
+    const note = noteTextarea.value.trim();
+    if (!note) {
+      statusMessage.textContent =
+        'Please describe the issue before submitting.';
+      return;
+    }
+
     const browserInfo: BrowserInfo = {
       userAgent: navigator.userAgent,
       browserName: 'chrome',
@@ -504,7 +515,7 @@ function activateOverlay(): void {
       coordinates: pendingCoordinates,
       viewport: pendingViewport,
       browserInfo,
-      note: noteTextarea.value || null,
+      note,
     };
 
     submitButton.disabled = true;

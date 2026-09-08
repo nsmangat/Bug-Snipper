@@ -183,8 +183,9 @@ function ReportDetailPanel() {
           <h3 className="text-xs font-semibold tracking-wide text-gray-300 uppercase">
             Note:
           </h3>
-          <p className="mt-2 text-sm text-gray-300">
-            {report.note ?? 'No note was added on report submission.'}
+          {/* wrap-break-word - fixes issue of a long string flowing out of the card */}
+          <p className="mt-2 text-sm text-gray-300 wrap-break-word">
+            {report.note}
           </p>
         </section>
       </div>

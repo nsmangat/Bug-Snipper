@@ -17,7 +17,7 @@ export interface SubmitReportRequest {
   coordinates: Coordinates;
   viewport: Viewport;
   browserInfo: BrowserInfo;
-  note?: string | null;
+  note: string;
 }
 
 export interface DomainCheckQuery {

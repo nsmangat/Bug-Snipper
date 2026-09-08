@@ -39,7 +39,7 @@ interface ReportRow {
   coordinates: Coordinates;
   viewport: Viewport;
   browser_info: BrowserInfo;
-  note: string | null;
+  note: string;
   status: ReportStatus;
   created_at: string;
   updated_at: string;
@@ -114,7 +114,7 @@ export async function submitReport(
       coordinates: submittedReport.coordinates,
       viewport: submittedReport.viewport,
       browser_info: submittedReport.browserInfo,
-      note: submittedReport.note ?? null,
+      note: submittedReport.note,
     })
     .select()
     .single(); // Get the row back as an object

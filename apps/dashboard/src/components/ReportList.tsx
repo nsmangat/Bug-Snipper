@@ -109,38 +109,53 @@ function ReportList() {
         ))}
       </select>
 
-      <ul className="mt-4 divide-y divide-gray-700 rounded-md border border-gray-700">
-        {reports?.map((report) => (
-          <li key={report.id}>
-            {/* Initial path is /workspaces/:workspaceId, to get to a report details page, link will be
-             in the form /workspaces/:workspaceId/reports/:id
-             Also carrying the current search string (the ?status= filter) along, otherwise Link
-             only changes pathname and drops any existing query string */}
-            <Link
-              to={{
-                pathname: `reports/${report.id}`,
-                search: searchParams.toString(),
-              }}
-              className="flex items-center gap-3 px-4 py-3 hover:bg-gray-900"
-            >
-              {/* w-x + text-center to keep column elements line up with each other, else different lengthed statuses 
-              would push the the domain and page url */}
-              <span
-                className={`w-24 shrink-0 rounded-full px-2 py-0.5 text-center text-xs font-medium ${STATUS_BADGE_CLASSNAMES[report.status]}`}
+      {/* header + list together share one border, so the header row and the rows below it read as one table, 
+      not two separate boxes Column widths here */}
+      <div className="mt-4 overflow-hidden rounded-md border border-gray-700">
+        <div className="flex items-center gap-3 border-b border-gray-700 bg-gray-900/50 px-4 py-2 text-xs font-semibold text-gray-500 uppercase">
+          <span className="w-24 shrink-0 text-center">Status</span>
+          <span className="min-w-0 flex-1">Note</span>
+          <span className="w-56 shrink-0">Page</span>
+        </div>
+        <ul className="divide-y divide-gray-700">
+          {reports?.map((report) => (
+            <li key={report.id}>
+              {/* Initial path is /workspaces/:workspaceId, to get to a report details page, link will be
+               in the form /workspaces/:workspaceId/reports/:id
+               Also carrying the current search string (the ?status= filter) along, otherwise Link
+               only changes pathname and drops any existing query string */}
+              <Link
+                to={{
+                  pathname: `reports/${report.id}`,
+                  search: searchParams.toString(),
+                }}
+                className="flex items-center gap-3 px-4 py-3 hover:bg-gray-900"
               >
-                {report.status}
-              </span>
-              <span className="w-40 shrink-0 truncate text-sm text-gray-100">
-                {report.domain}
-              </span>
-              {/* Truncate to cut off anything bigger than w-x above i.e. w-40 with '...' */}
-              <span className="truncate text-sm text-gray-500">
-                {report.pageUrl}
-              </span>
-            </Link>
-          </li>
-        ))}
-      </ul>
+                {/* w-x + text-center to keep column elements line up with each other, else different lengthed statuses
+                would push the the domain and page url */}
+                <span
+                  className={`w-24 shrink-0 rounded-full px-2 py-0.5 text-center text-xs font-medium ${STATUS_BADGE_CLASSNAMES[report.status]}`}
+                >
+                  {report.status}
+                </span>
+                {/* To distinguish between the different reports and what they're about */}
+                <span className="min-w-0 flex-1 truncate text-sm text-gray-100">
+                  {report.note}
+                </span>
+                {/* domain differentiates which registered site since a workspace could psan multiple hostnames,
+                    and path differentiates which page on that site since a workspace could be a single domain but 
+                    have reports from many pages 
+                    pageUrl is always the full absolute URL (zod validates it as one), so new URL(...) is safe here
+                    without a try/catch. */}
+                <span className="w-56 shrink-0 truncate text-sm text-gray-500">
+                  {report.domain}
+                  {new URL(report.pageUrl).pathname}
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </div>
     </div>
   );
 }

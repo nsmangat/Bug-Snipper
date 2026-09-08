@@ -1,5 +1,9 @@
 export type ReportStatus = 'open' | 'in_progress' | 'resolved' | 'abandoned';
 
+// Shared by the extension's textarea i.e. maxlength and validation, the backend's zod schema, and the
+// CHECK constraint in the db
+export const REPORT_NOTE_MAX_LENGTH = 200;
+
 // Screenshot coordinates
 export interface Coordinates {
   x: number;
@@ -41,7 +45,7 @@ export interface Report {
   coordinates: Coordinates;
   viewport: Viewport;
   browserInfo: BrowserInfo;
-  note: string | null;
+  note: string;
   status: ReportStatus;
   createdAt: string;
   updatedAt: string;

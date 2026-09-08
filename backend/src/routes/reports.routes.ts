@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
+import { REPORT_NOTE_MAX_LENGTH } from '@bug-snipper/shared-types';
 import {
   deleteReport,
   DomainNotAllowedError,
@@ -55,7 +56,11 @@ const submitReportSchema = z.object({
   coordinates: coordinatesSchema,
   viewport: viewportSchema,
   browserInfo: browserInfoSchema,
-  note: z.string().nullable().optional(),
+  note: z
+    .string()
+    .trim()
+    .min(1, 'A note is required before submitting')
+    .max(REPORT_NOTE_MAX_LENGTH),
 });
 
 /** Using 2 separate routers since both will be mounted differently
