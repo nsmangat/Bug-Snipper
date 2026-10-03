@@ -1,6 +1,10 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { REPORT_NOTE_MAX_LENGTH } from '@bug-snipper/shared-types';
+import {
+  CAPTURED_ERRORS_MAX_COUNT,
+  CAPTURED_NETWORK_REQUESTS_MAX_COUNT,
+  REPORT_NOTE_MAX_LENGTH,
+} from '@bug-snipper/shared-types';
 import {
   deleteReport,
   DomainNotAllowedError,
@@ -42,11 +46,26 @@ const browserInfoSchema = z.object({
   browserName: z.string(),
   browserVersion: z.string(),
   os: z.string(),
+  language: z.string(),
 });
 
 const domSnapshotSchema = z.object({
   html: z.string(),
   styles: z.record(z.record(z.string())),
+});
+
+const capturedErrorSchema = z.object({
+  type: z.enum(['error', 'unhandledrejection']),
+  message: z.string(),
+  stack: z.string().nullable(),
+  timestamp: z.string(),
+});
+
+const capturedNetworkRequestSchema = z.object({
+  url: z.string(),
+  method: z.string(),
+  statusCode: z.number().nullable(),
+  timestamp: z.string(),
 });
 
 const submitReportSchema = z.object({
@@ -61,6 +80,12 @@ const submitReportSchema = z.object({
     .trim()
     .min(1, 'A note is required before submitting')
     .max(REPORT_NOTE_MAX_LENGTH),
+  documentTitle: z.string(),
+  referrer: z.string(),
+  errors: z.array(capturedErrorSchema).max(CAPTURED_ERRORS_MAX_COUNT),
+  networkRequests: z
+    .array(capturedNetworkRequestSchema)
+    .max(CAPTURED_NETWORK_REQUESTS_MAX_COUNT),
 });
 
 /** Using 2 separate routers since both will be mounted differently

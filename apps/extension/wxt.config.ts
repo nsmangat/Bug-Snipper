@@ -19,9 +19,12 @@ export default defineConfig({
     // i.e. activeTab: act on the current tab only after a direct user gesture (clicking the extension)
     // this is for purpose of getting an ss
     // Storage for caching
-    permissions: ['activeTab', 'storage'],
+    // webRequest lets the background worker check (not modify) network request outcomes
+    // need this to build the recent-requests summary attached to a report
+    permissions: ['activeTab', 'storage', 'webRequest'],
     // URLs that the extension can interact with
-    // this is what lets the background service worker's fetch() reach the backend
-    host_permissions: ['http://localhost:3000/*'],
+    // Changed from just the backend's own address to <all_urls>  so webRequest can actually check
+    // network traffic on whichever allowlisted site the user reports a bug on
+    host_permissions: ['<all_urls>'],
   },
 });

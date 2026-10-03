@@ -2,6 +2,8 @@ import { browser } from 'wxt/browser';
 import { REPORT_NOTE_MAX_LENGTH } from '@bug-snipper/shared-types';
 import type {
   BrowserInfo,
+  CapturedError,
+  CapturedNetworkRequest,
   Coordinates,
   DomSnapshot,
   SubmitReportRequest,
@@ -9,8 +11,10 @@ import type {
 } from '@bug-snipper/shared-types';
 import type {
   ExtensionMessage,
+  NetworkRequestsResult,
   SubmitReportResult,
 } from '../lib/background-content-messages';
+import type { ErrorsUpdatedWindowMessage } from '../lib/window-messages';
 
 const OVERLAY_HOST_ID = 'bug-snipper-overlay-host';
 const INTRO_CARD_HOST_ID = 'bug-snipper-intro-card-host';
@@ -32,6 +36,11 @@ const CAPTURED_STYLE_PROPERTIES = [
   'display',
 ] as const; // as const turns it into a readonly tuple, cannot be mutated, just used for safety
 
+// Populated from page load by the message listener below, not just when the capture
+// overlay is open so that errors that happened before the user clicked the extension icon are also captured
+// Always holds the entire latest buffer error-capture.ts (the main-world script) sent, not something this script appends to itself
+let capturedErrors: CapturedError[] = [];
+
 export default defineContentScript({
   // Broad match for now, change after domain allowlist gating
   matches: ['*://*/*'],
@@ -42,6 +51,19 @@ export default defineContentScript({
       }
       if (message.type === 'DOMAIN_NOT_ALLOWED') {
         showNotAllowedToast();
+      }
+    });
+
+    // error-capture.ts runs in the page's main JS world and can't share things with
+    // this isolated-world script, postMessage is the only channel between them
+    // event.source check guards against an iframe or other window forwarding a lookalike message, the
+    // source/type check filters out the page's own unrelated postMessage traffic
+    window.addEventListener('message', (event: MessageEvent<unknown>) => {
+      if (event.source !== window) return;
+
+      const data = event.data as Partial<ErrorsUpdatedWindowMessage> | null;
+      if (data?.source === 'bug-snipper' && data.type === 'ERRORS_UPDATED') {
+        capturedErrors = data.payload ?? [];
       }
     });
   },
@@ -506,7 +528,13 @@ function activateOverlay(): void {
       browserName: 'chrome',
       browserVersion: 'unknown',
       os: 'unknown',
+      language: navigator.language,
     };
+
+    // Only the network buffer needs a round trip, capturedErrors is already sitting in this
+    // script's own memory (kept up to date by the message listener in main(), not fetched on demand
+    // like network requests are, since only the background worker can see those)
+    const networkRequests = await requestNetworkRequests();
 
     const payload: SubmitReportRequest = {
       pageUrl: location.href,
@@ -516,6 +544,10 @@ function activateOverlay(): void {
       viewport: pendingViewport,
       browserInfo,
       note,
+      documentTitle: document.title,
+      referrer: document.referrer,
+      errors: capturedErrors,
+      networkRequests,
     };
 
     submitButton.disabled = true;
@@ -606,6 +638,15 @@ function activateOverlay(): void {
     const response = await browser.runtime.sendMessage(message);
 
     return response as string;
+  }
+
+  // Only the background worker can see network activity (chrome.webRequest isn't available to
+  // content scripts), so this asks it for whatever it's buffered for this tab so far
+  async function requestNetworkRequests(): Promise<CapturedNetworkRequest[]> {
+    const message: ExtensionMessage = { type: 'GET_NETWORK_REQUESTS' };
+    const response = await browser.runtime.sendMessage(message);
+
+    return response as NetworkRequestsResult;
   }
 
   async function cropScreenshot(

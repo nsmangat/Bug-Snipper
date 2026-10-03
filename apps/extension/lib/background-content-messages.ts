@@ -1,4 +1,7 @@
-import type { SubmitReportRequest } from '@bug-snipper/shared-types';
+import type {
+  CapturedNetworkRequest,
+  SubmitReportRequest,
+} from '@bug-snipper/shared-types';
 
 /** Purpose of this interface is to have like a typed contract between background worker
  * and content script i.e. they both know what to expect in the messages they send/receive between the 2
@@ -43,8 +46,21 @@ export interface SubmitReportResult {
   body: unknown;
 }
 
+/** Content script -> background for submitting the network requests that have most
+ * recently happened on this tab
+ * The background worker is the only place that can see them at all since
+ * chrome.webRequest isn't available to content scripts, and it's been buffering them per-tab
+ * since page load, not just since the capture overlay opened
+ */
+export interface GetNetworkRequestsMessage {
+  type: 'GET_NETWORK_REQUESTS';
+}
+
 export type ExtensionMessage =
   | ActivateCaptureMessage
   | CaptureTabRequestMessage
   | SubmitReportMessage
-  | DomainNotAllowedMessage;
+  | DomainNotAllowedMessage
+  | GetNetworkRequestsMessage;
+
+export type NetworkRequestsResult = CapturedNetworkRequest[];

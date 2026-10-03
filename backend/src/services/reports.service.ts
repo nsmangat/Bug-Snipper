@@ -1,6 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import type {
   BrowserInfo,
+  CapturedError,
+  CapturedNetworkRequest,
   Coordinates,
   DomSnapshot,
   Report,
@@ -40,6 +42,10 @@ interface ReportRow {
   viewport: Viewport;
   browser_info: BrowserInfo;
   note: string;
+  document_title: string;
+  referrer: string;
+  errors: CapturedError[];
+  network_requests: CapturedNetworkRequest[];
   status: ReportStatus;
   created_at: string;
   updated_at: string;
@@ -58,6 +64,10 @@ function mapReportRow(row: ReportRow): Report {
     viewport: row.viewport,
     browserInfo: row.browser_info,
     note: row.note,
+    documentTitle: row.document_title,
+    referrer: row.referrer,
+    errors: row.errors,
+    networkRequests: row.network_requests,
     status: row.status,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -115,6 +125,10 @@ export async function submitReport(
       viewport: submittedReport.viewport,
       browser_info: submittedReport.browserInfo,
       note: submittedReport.note,
+      document_title: submittedReport.documentTitle,
+      referrer: submittedReport.referrer,
+      errors: submittedReport.errors,
+      network_requests: submittedReport.networkRequests,
     })
     .select()
     .single(); // Get the row back as an object

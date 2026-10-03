@@ -23,6 +23,16 @@ const STATUS_OPTIONS: ReportStatus[] = [
   'abandoned',
 ];
 
+// null means the request never got a response at all (like DNS failure, CORS block,
+// connection refused, timeout) and is treated the same as a 5xx since both mean that this call failed
+function getStatusBadgeClassName(statusCode: number | null): string {
+  if (statusCode === null || statusCode >= 500)
+    return 'bg-red-900 text-red-200';
+  if (statusCode >= 400) return 'bg-yellow-900 text-yellow-200';
+  if (statusCode >= 300) return 'bg-blue-900 text-blue-200';
+  return 'bg-green-900 text-green-200';
+}
+
 function ReportDetailPanel() {
   // workspaceId is available here too, even though this component's own route
   // (reports/:reportId) doesn't declare it, it's part of the same merged params as the parent
@@ -169,14 +179,38 @@ function ReportDetailPanel() {
           <h3 className="text-xs font-semibold tracking-wide text-gray-300 uppercase">
             Page:
           </h3>
+          {report.documentTitle && (
+            <p className="mt-2 text-sm text-gray-100">{report.documentTitle}</p>
+          )}
           <a
             href={report.pageUrl}
             target="_blank"
             rel="noreferrer"
-            className="mt-2 block text-sm break-all text-blue-400 hover:text-blue-300"
+            className="mt-1 block text-sm break-all text-blue-400 hover:text-blue-300"
           >
             {report.pageUrl}
           </a>
+          {/* referrer is usually going to be empty (direct navigation, typed URL, bookmark) */}
+          {report.referrer && (
+            <p className="mt-1 text-xs break-all text-gray-500">
+              Referred from: {report.referrer}
+            </p>
+          )}
+        </section>
+
+        <section>
+          <h3 className="text-xs font-semibold tracking-wide text-gray-300 uppercase">
+            Browser:
+          </h3>
+          {/* Only userAgent and language are real captured values, browserInfo also has
+              browserName/browserVersion/os fields, but those are currently hardcoded in
+              the extension ('chrome'/'unknown'/'unknown'), not actually detected */}
+          <p className="mt-2 text-sm break-all text-gray-300">
+            {report.browserInfo.userAgent}
+          </p>
+          <p className="mt-1 text-xs text-gray-500">
+            Language: {report.browserInfo.language}
+          </p>
         </section>
 
         <section>
@@ -237,6 +271,79 @@ function ReportDetailPanel() {
         <pre className="mt-2 max-h-64 overflow-y-auto rounded-md border border-gray-800 bg-gray-900 p-3 text-xs whitespace-pre-wrap wrap-break-word text-gray-300">
           {report.domSnapshot.html}
         </pre>
+      </section>
+
+      <section className="mt-6">
+        <h3 className="text-xs font-semibold tracking-wide text-gray-500 uppercase">
+          Captured errors ({report.errors.length})
+        </h3>
+        {report.errors.length === 0 ? (
+          <p className="mt-2 text-sm text-gray-500">
+            No errors were captured around the time of this report.
+          </p>
+        ) : (
+          <ul className="mt-2 max-h-64 divide-y divide-gray-800 overflow-y-auto rounded-md border border-gray-800">
+            {report.errors.map((capturedError, index) => (
+              <li key={index} className="p-3 text-xs">
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`rounded-full px-2 py-0.5 font-medium ${
+                      capturedError.type === 'error'
+                        ? 'bg-red-900 text-red-200'
+                        : 'bg-orange-900 text-orange-200'
+                    }`}
+                  >
+                    {capturedError.type}
+                  </span>
+                  <span className="text-gray-500">
+                    {new Date(capturedError.timestamp).toLocaleTimeString()}
+                  </span>
+                </div>
+                <p className="mt-1 wrap-break-word text-gray-300">
+                  {capturedError.message}
+                </p>
+                {capturedError.stack && (
+                  <pre className="mt-1 overflow-x-auto text-gray-500">
+                    {capturedError.stack}
+                  </pre>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      {/* Recent request only, and only method/url/status, never bodies or headers
+           Catches hiddenish stuff like  a fetch() that resolves with a 500 and gets ignored by the
+          page's own code, which might produce a broken UI with no thrown error and nothing visible in a
+          screenshot */}
+      <section className="mt-6">
+        <h3 className="text-xs font-semibold tracking-wide text-gray-500 uppercase">
+          Recent network requests ({report.networkRequests.length})
+        </h3>
+        {report.networkRequests.length === 0 ? (
+          <p className="mt-2 text-sm text-gray-500">
+            No network activity was captured around the time of this report.
+          </p>
+        ) : (
+          <ul className="mt-2 max-h-64 divide-y divide-gray-800 overflow-y-auto rounded-md border border-gray-800 text-xs">
+            {report.networkRequests.map((request, index) => (
+              <li key={index} className="flex items-center gap-2 p-2">
+                <span
+                  className={`w-16 shrink-0 rounded px-1.5 py-0.5 text-center font-medium ${getStatusBadgeClassName(request.statusCode)}`}
+                >
+                  {request.statusCode ?? 'failed'}
+                </span>
+                <span className="w-14 shrink-0 text-gray-500">
+                  {request.method}
+                </span>
+                <span className="min-w-0 flex-1 truncate text-gray-300">
+                  {request.url}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
 
       {isHtmlExpanded && (

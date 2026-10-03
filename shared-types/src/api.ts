@@ -1,5 +1,7 @@
 import type {
   BrowserInfo,
+  CapturedError,
+  CapturedNetworkRequest,
   Coordinates,
   DomSnapshot,
   Report,
@@ -18,6 +20,10 @@ export interface SubmitReportRequest {
   viewport: Viewport;
   browserInfo: BrowserInfo;
   note: string;
+  documentTitle: string;
+  referrer: string;
+  errors: CapturedError[];
+  networkRequests: CapturedNetworkRequest[];
 }
 
 export interface DomainCheckQuery {

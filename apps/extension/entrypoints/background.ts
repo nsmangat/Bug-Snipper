@@ -4,11 +4,34 @@ import type {
   SubmitReportResult,
 } from '../lib/background-content-messages';
 import type {
+  CapturedNetworkRequest,
   DomainCheckResponse,
   SubmitReportRequest,
 } from '@bug-snipper/shared-types';
+import { CAPTURED_NETWORK_REQUESTS_MAX_COUNT } from '@bug-snipper/shared-types';
 
 const BACKEND_URL = 'http://localhost:3000';
+
+/*Tab rolling buffer of recent network request outcomes, chrome.webRequest is only
+ * available here in the background worker, not content scripts, so this is the one place
+ * that can see the network data
+ * Keyed by tabId since multiple tabs are independently being browsed at once,
+ * cleared per-tab on navigation (see tabs.onUpdated below) so a report never
+ * shows requests from a page the user already left */
+const networkRequestsByTab = new Map<number, CapturedNetworkRequest[]>();
+
+function recordNetworkRequest(
+  tabId: number,
+  request: CapturedNetworkRequest,
+): void {
+  const existing = networkRequestsByTab.get(tabId) ?? [];
+  existing.push(request);
+  // Trim from the front (oldest first) once over the cap, only the most recent requests matter
+  if (existing.length > CAPTURED_NETWORK_REQUESTS_MAX_COUNT) {
+    existing.splice(0, existing.length - CAPTURED_NETWORK_REQUESTS_MAX_COUNT);
+  }
+  networkRequestsByTab.set(tabId, existing);
+}
 
 /** Runs once when the service worker starts up
  * just registers a listener i.e. this function is called after onClicked event
@@ -21,8 +44,8 @@ export default defineBackground(() => {
   });
 
   // Content script can't call captureVisibleTab or fetch() on our backend without hitting
-  // page-context restrictions — both routed through this one listener instead
-  browser.runtime.onMessage.addListener((message: ExtensionMessage) => {
+  // page-context restrictions, both routed through this one listener instead
+  browser.runtime.onMessage.addListener((message: ExtensionMessage, sender) => {
     if (message.type === 'CAPTURE_TAB_REQUEST') {
       // Returns a data URL string back to the caller, encoded as base64 png
       // i.e. data:image/png;base64,/9j/4AAQSkZJRgABAQAAAQABAAD...
@@ -31,6 +54,59 @@ export default defineBackground(() => {
 
     if (message.type === 'SUBMIT_REPORT') {
       return submitReport(message.payload);
+    }
+
+    if (message.type === 'GET_NETWORK_REQUESTS') {
+      // sender.tab.id is the tab the content script that sent this message is running in
+      const tabId = sender.tab?.id;
+      return Promise.resolve(
+        tabId !== undefined ? (networkRequestsByTab.get(tabId) ?? []) : [],
+      );
+    }
+  });
+
+  // webRequest only reports outcomes, never lets us read/modify bodies or headers
+  // onCompleted gives a status code, onErrorOccurred covers requests that never got a response at all
+  // (i.e. DNS failure, CORS block, connection refused, etc.)
+  //
+  // types filters this to API like traffic only (xmlhttprequest covers both XHR and fetch(),
+  // Chrome's webRequest API doesn't have a separate "fetch" resource type and other is
+  // for anything not categorized)
+  // Excludes image/stylesheet/font/media/script/main_frame/etc. since the rolling buffer only holds CAPTURED_NETWORK_REQUESTS_MAX_COUNT
+  // entries, and on an asset-heavy page, not excluding would crowd the network requests and hide or bump out the actual
+  // failed API call that could be a bug or error
+  browser.webRequest.onCompleted.addListener(
+    (details) => {
+      if (details.tabId < 0) return; // -1 means not associated with a tab like extension's own requests
+      recordNetworkRequest(details.tabId, {
+        url: details.url,
+        method: details.method,
+        statusCode: details.statusCode,
+        timestamp: new Date().toISOString(),
+      });
+    },
+    { urls: ['<all_urls>'], types: ['xmlhttprequest', 'other'] },
+  );
+
+  browser.webRequest.onErrorOccurred.addListener(
+    (details) => {
+      if (details.tabId < 0) return;
+      recordNetworkRequest(details.tabId, {
+        url: details.url,
+        method: details.method,
+        statusCode: null,
+        timestamp: new Date().toISOString(),
+      });
+    },
+    { urls: ['<all_urls>'], types: ['xmlhttprequest', 'other'] },
+  );
+
+  // Clears a tab's buffer as soon as it starts navigating to a new page
+  // without this, a report submitted on a fresh page could still show requests from whatever the tab was showing before,
+  // since the Map is keyed only by tabId, which a navigation doesn't change
+  browser.tabs.onUpdated.addListener((tabId, changeInfo) => {
+    if (changeInfo.status === 'loading') {
+      networkRequestsByTab.delete(tabId);
     }
   });
 });
