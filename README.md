@@ -12,6 +12,16 @@ organization's website and submit it as a bug report. A dashboard is also built-
 3. The extension uploads the screenshot to Supabase Storage and creates a report containing the HTML of the captured image, the image itself, and the description.
 4. The organization reviews, labels, filters, and manages incoming reports from the dashboard.
 
+<img width="1920" height="940" alt="extension-start" src="https://github.com/user-attachments/assets/e902aa0b-6c99-4907-9515-0bc387056f45" />
+
+<img width="1920" height="955" alt="extension-crop" src="https://github.com/user-attachments/assets/8863cb59-fad3-491e-a1c9-54f0d2b61ee5" />
+
+<img width="1890" height="590" alt="dashboard-reports-list" src="https://github.com/user-attachments/assets/8de29646-af6a-4848-a2de-15b8ea14c77b" />
+
+<img width="1697" height="817" alt="dashboard-report-details" src="https://github.com/user-attachments/assets/b8d6d6ed-28ab-4f25-ba1e-84184fc48322" />
+
+
+
 ## Tech stack
 
 - Extension Build - WXT
